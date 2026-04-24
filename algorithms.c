@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <limits.h>
 #include <time.h>
 
@@ -7,7 +6,9 @@
 #include "queue.h"
 #include "utils.h"
 
-void simulate_fifo(Process *original, int n, time_t base) {
+/* ================= FIFO ================= */
+
+void simulate_fifo(Process *original, int n, time_t base, int *gantt, int *gantt_len) {
     Process p[64];
     copy_processes(p, original, n);
     sort_by_arrival(p, n);
@@ -27,6 +28,11 @@ void simulate_fifo(Process *original, int n, time_t base) {
         p[i].start_time = current_time;
         log_start(&p[i], base, current_time);
 
+        for (int j = 0; j < p[i].burst_time; j++) {
+            gantt[*gantt_len] = p[i].pid;
+            (*gantt_len)++;
+        }
+
         current_time += p[i].burst_time;
 
         p[i].completed = 1;
@@ -40,7 +46,9 @@ void simulate_fifo(Process *original, int n, time_t base) {
     print_metrics(p, n);
 }
 
-void simulate_rr(Process *original, int n, time_t base, int quantum) {
+/* ================= Round Robin ================= */
+
+void simulate_rr(Process *original, int n, time_t base, int quantum, int *gantt, int *gantt_len) {
     Process p[64];
     copy_processes(p, original, n);
     sort_by_arrival(p, n);
@@ -92,6 +100,11 @@ void simulate_rr(Process *original, int n, time_t base, int quantum) {
             slice = quantum;
         }
 
+        for (int j = 0; j < slice; j++) {
+            gantt[*gantt_len] = p[idx].pid;
+            (*gantt_len)++;
+        }
+
         p[idx].remaining_time -= slice;
         current_time += slice;
 
@@ -120,6 +133,8 @@ void simulate_rr(Process *original, int n, time_t base, int quantum) {
     print_metrics(p, n);
 }
 
+/* ================= SJF Non-preemptive ================= */
+
 int select_sjf(Process *p, int n, int current_time) {
     int best = -1;
     int best_burst = INT_MAX;
@@ -143,7 +158,7 @@ int select_sjf(Process *p, int n, int current_time) {
     return best;
 }
 
-void simulate_sjf(Process *original, int n, time_t base) {
+void simulate_sjf(Process *original, int n, time_t base, int *gantt, int *gantt_len) {
     Process p[64];
     copy_processes(p, original, n);
 
@@ -176,6 +191,11 @@ void simulate_sjf(Process *original, int n, time_t base) {
         p[idx].start_time = current_time;
         log_start(&p[idx], base, current_time);
 
+        for (int j = 0; j < p[idx].burst_time; j++) {
+            gantt[*gantt_len] = p[idx].pid;
+            (*gantt_len)++;
+        }
+
         current_time += p[idx].burst_time;
 
         p[idx].remaining_time = 0;
@@ -190,6 +210,8 @@ void simulate_sjf(Process *original, int n, time_t base) {
     compute_metrics(p, n);
     print_metrics(p, n);
 }
+
+/* ================= SRTF Preemptive ================= */
 
 int select_srtf(Process *p, int n, int current_time) {
     int best = -1;
@@ -217,7 +239,7 @@ int select_srtf(Process *p, int n, int current_time) {
     return best;
 }
 
-void simulate_srtf(Process *original, int n, time_t base) {
+void simulate_srtf(Process *original, int n, time_t base, int *gantt, int *gantt_len) {
     Process p[64];
     copy_processes(p, original, n);
 
@@ -241,6 +263,9 @@ void simulate_srtf(Process *original, int n, time_t base) {
             p[idx].start_time = current_time;
             log_start(&p[idx], base, current_time);
         }
+
+        gantt[*gantt_len] = p[idx].pid;
+        (*gantt_len)++;
 
         p[idx].remaining_time--;
         current_time++;
